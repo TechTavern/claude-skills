@@ -1,0 +1,31 @@
+project_name:
+mode: # standup | milestone (omit for default 300-500 words)
+audience_type: product # product | adjacent_technical | executive
+current_milestone:
+target_date:
+period_start:
+period_end:
+confidence_level: on_track # on_track | at_risk | ahead
+
+recent_work_completed:
+  - ""
+
+planned_next_work:
+  - ""
+
+blockers:
+  - ""
+
+known_risks:
+  - risk: ""
+    impact: ""
+    mitigation: ""
+
+business_objective:
+strategic_context:
+
+# Optional internal-only
+signal_score:
+  execution_health: Green # Green | Yellow | Red
+  strategic_leverage: Moderate # Low | Moderate | High
+  delivery_risk: Low # Low | Moderate | High

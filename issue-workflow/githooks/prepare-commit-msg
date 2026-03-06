@@ -1,0 +1,76 @@
+#!/bin/bash
+# .githooks/prepare-commit-msg
+#
+# Safety net for the GitHub Issue Workflow skill.
+# Warns (does not block) when commits lack issue references.
+#
+# Installation:
+#   git config core.hooksPath .githooks
+
+COMMIT_MSG_FILE="$1"
+COMMIT_SOURCE="$2"
+
+# Skip for merge commits, amends, and squashes — these have their own context
+if [ "$COMMIT_SOURCE" = "merge" ] || [ "$COMMIT_SOURCE" = "squash" ]; then
+  exit 0
+fi
+
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Resolve manifest directory from CLAUDE.md or fall back to default
+MANIFEST_DIR=".claude/issues"
+if [ -f "CLAUDE.md" ]; then
+  CUSTOM_PATH=$(grep -oP 'issueManifestPath:\s*\K\S+' CLAUDE.md)
+  if [ -n "$CUSTOM_PATH" ]; then
+    MANIFEST_DIR="$CUSTOM_PATH"
+  fi
+fi
+
+# Count active manifests (non-archived, containing open issues)
+ACTIVE_MANIFESTS=0
+if [ -d "$MANIFEST_DIR" ]; then
+  for manifest in "$MANIFEST_DIR"/*.json; do
+    [ -f "$manifest" ] || continue
+    if grep -q '"status":\s*"open"' "$manifest" 2>/dev/null; then
+      ACTIVE_MANIFESTS=$((ACTIVE_MANIFESTS + 1))
+    fi
+  done
+fi
+
+# Check for issue reference in commit message
+HAS_ISSUE_REF=false
+if echo "$COMMIT_MSG" | grep -qiE '(fixes|closes|resolves|ref|see|part of)\s+#[0-9]+'; then
+  HAS_ISSUE_REF=true
+fi
+
+# --- Warnings ---
+
+if [ "$HAS_ISSUE_REF" = false ]; then
+  echo ""
+  echo "⚠️  WARNING: No issue reference found in commit message."
+  echo "   Expected: 'Fixes #<number>' or 'Ref #<number>'"
+
+  if [ "$ACTIVE_MANIFESTS" -gt 0 ]; then
+    echo ""
+    echo "   Active manifests with open issues found in $MANIFEST_DIR/:"
+    for manifest in "$MANIFEST_DIR"/*.json; do
+      [ -f "$manifest" ] || continue
+      if grep -q '"status":\s*"open"' "$manifest" 2>/dev/null; then
+        BASENAME=$(basename "$manifest")
+        # Extract open issue numbers
+        OPEN_ISSUES=$(grep -B1 '"status":\s*"open"' "$manifest" \
+          | grep -oP '"number":\s*\K[0-9]+' \
+          | tr '\n' ', ' | sed 's/,$//')
+        echo "   📄 $BASENAME — open issues: #$OPEN_ISSUES"
+      fi
+    done
+  fi
+
+  echo ""
+  echo "   To proceed without an issue reference, commit as-is."
+  echo "   This is a warning, not a block."
+  echo ""
+fi
+
+# Always exit 0 — this hook warns, never blocks
+exit 0
