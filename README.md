@@ -26,18 +26,13 @@ mkdir -p ~/.claude/skills
 git clone https://github.com/TechTavern/claude-skills.git ~/.claude/skills/claude-skills
 ```
 
-**Important:** Claude Code only discovers skills in **direct subdirectories** of `~/.claude/skills/` — it does not recurse into nested directories. Since this repo clones into a subdirectory (`claude-skills/`), you must create symlinks for each skill:
+**Important:** Claude Code only discovers skills in **direct subdirectories** of `~/.claude/skills/` — it does not recurse into nested directories. Run the setup script to create symlinks and register any Claude Code hooks:
 
 ```bash
-# Create symlinks for each skill so Claude Code can discover them
-for dir in ~/.claude/skills/claude-skills/*/; do
-  skill=$(basename "$dir")
-  [ "$skill" = ".git" ] && continue
-  ln -sf "$dir" ~/.claude/skills/"$skill"
-done
+~/.claude/skills/claude-skills/setup.sh
 ```
 
-You'll need to re-run this after pulling new skills. Restart Claude Code after creating symlinks.
+The script is idempotent — safe to re-run after pulling new skills. Restart Claude Code afterward.
 
 ### Per-Project Installation
 
@@ -55,14 +50,10 @@ git clone https://github.com/TechTavern/claude-skills.git .claude/skills/claude-
 
 If you go this route, consider adding `.claude/skills/claude-skills/` to your `.gitignore` to avoid nesting repos.
 
-As with global installation, you must create symlinks for discovery:
+As with global installation, run the setup script:
 
 ```bash
-for dir in .claude/skills/claude-skills/*/; do
-  skill=$(basename "$dir")
-  [ "$skill" = ".git" ] && continue
-  ln -sf "$(pwd)/$dir" .claude/skills/"$skill"
-done
+.claude/skills/claude-skills/setup.sh
 ```
 
 ### Updating
