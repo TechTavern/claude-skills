@@ -19,34 +19,37 @@ between planned work, code changes, and issue resolution.
 - **GitHub CLI (`gh`)** must be installed and authenticated
   - Install: https://cli.github.com/
   - Authenticate: `gh auth login`
-- **jq** is recommended for manifest manipulation
+- **jq** is required (used by the Claude Code hook)
 
-### Installation
-1. Create the required directories:
+### Global Installation
+
+This skill is installed globally at `~/.claude/skills/` and works across all
+projects. The Claude Code hook is registered in `~/.claude/settings.json` and
+automatically injects open-issue context when Claude is about to commit.
+
+**Per-project setup** (run once in each repo that uses issue tracking):
+1. Create the manifest directory:
 ```
    mkdir -p .claude/issues/archive
-   mkdir -p .githooks
 ```
-2. Place this skill directory at `.claude/skills/issue-workflow/`
-3. Copy the commit hook into the project hooks directory:
-```
-   cp .claude/skills/issue-workflow/hooks/prepare-commit-msg .githooks/
-```
-4. Make the hook executable (Linux/WSL only — skip on Windows):
-```
-   chmod +x .githooks/prepare-commit-msg
-```
-5. Configure git to use the project hooks directory:
-```
-   git config core.hooksPath .githooks
-```
-6. Seed the base labels (run once per repo):
+2. Seed the base labels:
 ```
    gh label create "bug" --color "d73a4a" --force
    gh label create "feature" --color "0075ca" --force
    gh label create "enhancement" --color "a2eeef" --force
    gh label create "chore" --color "e4e669" --force
    gh label create "documentation" --color "0e8a16" --force
+```
+
+### Optional: Git Hook (safety net for manual commits)
+
+The Claude Code hook handles Claude-driven commits. If you also want warnings
+on manual commits (outside Claude), set up the git hook per-project:
+```
+   mkdir -p .githooks
+   cp ~/.claude/skills/claude-skills/issue-workflow/githooks/prepare-commit-msg .githooks/
+   chmod +x .githooks/prepare-commit-msg
+   git config core.hooksPath .githooks
 ```
 
 ### Optional CLAUDE.md Configuration
@@ -58,16 +61,23 @@ If not specified, defaults to `.claude/issues/`.
 
 ### Directory Structure
 ```
-.claude/
+~/.claude/
+  settings.json           (hooks config — PreToolUse for Bash)
   skills/
-    issue-workflow/
+    issue-workflow/        (symlink to claude-skills/issue-workflow)
       SKILL.md
       hooks/
-        prepare-commit-msg
-  issues/
-    archive/
-.githooks/
-  prepare-commit-msg      (copied from skill during setup)
+        pre-commit-issue-check.sh   (Claude Code hook — registered globally)
+      githooks/
+        prepare-commit-msg          (git hook — copied per-project if desired)
+
+<project>/
+  .claude/
+    issues/
+      archive/
+      <date>-<slug>.json   (manifest files)
+  .githooks/
+    prepare-commit-msg     (optional, copied from skill)
 ```
 
 ## Configuration
@@ -218,5 +228,5 @@ Filename: `<date>-<slug>.json` (e.g., `2025-02-27-auth-refactor.json`)
 - If `gh` is not authenticated, stop and instruct the user to run `gh auth login`
 - If a label creation fails, stop and report — do not create issues with missing labels
 - If issue creation fails, report the failure and do not update the manifest
-- If the hooks directory is not configured, instruct the user to run
-  `git config core.hooksPath .githooks`
+- If the `.claude/issues/` directory does not exist in the project, create it
+  before writing a manifest
